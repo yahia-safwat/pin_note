@@ -1,16 +1,10 @@
-/// Note card widget for displaying note preview.
-///
-/// Used in both grid and list views to show a note's
-/// title, content preview, and metadata.
-library;
-
 import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/utils/date_formatter.dart';
 import '../../domain/entities/note_entity.dart';
 
-/// A card widget that displays a note preview.
+/// A card widget that displays a note preview matching the reference design.
 class NoteCard extends StatelessWidget {
   /// The note to display
   final NoteEntity note;
@@ -18,114 +12,131 @@ class NoteCard extends StatelessWidget {
   /// Callback when the card is tapped
   final VoidCallback? onTap;
 
-  /// Callback when the card is long-pressed
-  final VoidCallback? onLongPress;
+  /// Callback when the menu is tapped
+  final VoidCallback? onMenuTap;
 
-  /// Whether to use grid layout (compact) or list layout (expanded)
-  final bool isGridView;
+  /// Whether the card is in grid mode
+  final bool isGridMode;
 
   const NoteCard({
     super.key,
     required this.note,
     this.onTap,
-    this.onLongPress,
-    this.isGridView = true,
+    this.onMenuTap,
+    this.isGridMode = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final noteColor = NoteColors.fromInt(note.color);
-    final isDarkBackground = _isDarkColor(noteColor);
-    final textColor = isDarkBackground ? Colors.white : Colors.black87;
-    final secondaryTextColor = isDarkBackground
-        ? Colors.white70
-        : Colors.black54;
 
-    return Card(
-      color: noteColor,
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: Colors.black.withValues(alpha: 0.05), width: 1),
+    return Container(
+      margin: EdgeInsets.symmetric(
+        horizontal: isGridMode ? 0 : 16,
+        vertical: 6,
       ),
-      child: InkWell(
-        onTap: onTap,
-        onLongPress: onLongPress,
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Header with pin indicator and date
-              Row(
-                children: [
-                  // Pin indicator
-                  if (note.isPinned) ...[
-                    Icon(Icons.push_pin, size: 16, color: AppColors.pinned),
-                    const SizedBox(width: 4),
-                  ],
+      decoration: BoxDecoration(
+        color: noteColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: Colors.black.withValues(alpha: 0.08),
+          width: 1,
+        ),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Title row with menu
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Pin indicator
+                    if (note.isPinned) ...[
+                      const Icon(
+                        Icons.push_pin,
+                        size: 16,
+                        color: AppColors.pinned,
+                      ),
+                      const SizedBox(width: 6),
+                    ],
 
-                  // Date
-                  Expanded(
-                    child: Text(
-                      DateFormatter.formatForCard(note.updatedAt),
-                      style: TextStyle(fontSize: 12, color: secondaryTextColor),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    // Title
+                    Expanded(
+                      child: Text(
+                        note.title.isNotEmpty ? note.title : 'Untitled',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                          height: 1.3,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
+                  ],
+                ),
+
+                // Content preview
+                if (note.content.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          note.content,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.black.withValues(alpha: 0.65),
+                            height: 1.4,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+
+                      // Menu button
+                      GestureDetector(
+                        onTap: onMenuTap,
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 8),
+                          child: Icon(
+                            Icons.more_vert,
+                            size: 20,
+                            color: Colors.black.withValues(alpha: 0.5),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
-              ),
 
-              const SizedBox(height: 8),
-
-              // Title
-              if (note.title.isNotEmpty) ...[
+                // Date
+                const SizedBox(height: 8),
                 Text(
-                  note.title,
+                  DateFormatter.formatDate(note.updatedAt),
                   style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                    color: textColor,
-                    height: 1.3,
+                    fontSize: 12,
+                    color: Colors.black.withValues(alpha: 0.5),
                   ),
-                  maxLines: isGridView ? 2 : 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 4),
               ],
-
-              // Content preview
-              if (note.content.isNotEmpty)
-                Expanded(
-                  child: Text(
-                    note.content,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: secondaryTextColor,
-                      height: 1.4,
-                    ),
-                    maxLines: isGridView ? 6 : 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-            ],
+            ),
           ),
         ),
       ),
     );
   }
-
-  /// Check if a color is considered dark.
-  bool _isDarkColor(Color color) {
-    // Calculate luminance
-    final luminance = color.computeLuminance();
-    return luminance < 0.5;
-  }
 }
 
-/// A list tile variant of the note card for list view.
+/// A list tile variant of the note card.
 class NoteListTile extends StatelessWidget {
   /// The note to display
   final NoteEntity note;

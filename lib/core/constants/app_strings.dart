@@ -58,4 +58,17 @@ class AppStrings {
   // Database
   static const String databaseName = 'pin_note.db';
   static const String notesTable = 'notes';
+
+  // Utils
+  static String formatDate(DateTime date) {
+    final now = DateTime.now();
+    if (date.year == now.year &&
+        date.month == now.month &&
+        date.day == now.day) {
+      return 'Today, ${_twoDigits(date.hour)}:${_twoDigits(date.minute)}';
+    }
+    return '${date.day}/${date.month}/${date.year}';
+  }
+
+  static String _twoDigits(int n) => n >= 10 ? '$n' : '0$n';
 }

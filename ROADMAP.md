@@ -24,6 +24,7 @@ A Flutter notepad application similar to ColorNote, built with Clean Architectur
 - [x] App theme with Material 3 (`core/theme/app_theme.dart`)
 - [x] App router configuration (`core/router/app_router.dart`)
 - [x] Dependency injection container (`core/di/injection_container.dart`)
+- [x] App shell with bottom navigation (`core/widgets/app_shell.dart`)
 
 ### Domain Layer
 - [x] Note entity (pure Dart, no dependencies)
@@ -49,11 +50,11 @@ A Flutter notepad application similar to ColorNote, built with Clean Architectur
 - [x] NotesState with freezed
 - [x] NoteEditorCubit for note editing
 - [x] NoteEditorState with freezed
-- [x] Notes list page (home)
-- [x] Note editor page
+- [x] Notes list page (home) - minimal design
+- [x] Note editor page - minimal design
 
 ### UI Components
-- [x] Note card widget (grid view)
+- [x] Note card widget (matching reference design)
 - [x] Note list tile widget (list view)
 - [x] Color picker widget
 - [x] Search bar widget
@@ -67,11 +68,20 @@ A Flutter notepad application similar to ColorNote, built with Clean Architectur
 - [x] Auto-save while typing
 - [x] Pin and unpin notes
 - [x] Color-coded notes (8 colors)
-- [x] Grid and list view toggle
+- [x] Grid and list view toggle (in menu)
 - [x] Search notes by title and content
-- [x] Sort notes (date, title, color)
+- [x] Sort notes (date, title, color) - in menu
 - [x] Long-press quick actions
 - [x] Timestamps (createdAt, updatedAt)
+
+### Navigation & Layout
+- [x] Bottom navigation bar (4 tabs)
+- [x] Home (Notes) tab
+- [x] Tasks tab (placeholder)
+- [x] Notifications tab (placeholder)
+- [x] Settings tab (with options)
+- [x] Centered FAB with lavender color
+- [x] Minimal AppBar with menu
 
 ---
 
@@ -96,7 +106,13 @@ _No items currently in progress_
 - [ ] Archive notes
 - [ ] Trash bin with restore
 
-### Version 1.3 - Sync & Backup
+### Version 1.3 - Tasks Feature
+- [ ] Create tasks with due dates
+- [ ] Task list view
+- [ ] Task completion tracking
+- [ ] Task reminders
+
+### Version 1.4 - Sync & Backup
 - [ ] Cloud backup (Firebase/Supabase)
 - [ ] Export/import all notes
 - [ ] Auto-backup settings
@@ -131,55 +147,35 @@ lib/
 │   │   └── app_router.dart
 │   ├── theme/
 │   │   └── app_theme.dart
-│   └── utils/
-│       └── date_formatter.dart
+│   ├── utils/
+│   │   └── date_formatter.dart
+│   └── widgets/
+│       └── app_shell.dart
 │
 ├── features/
-│   └── notes/
-│       ├── data/
-│       │   ├── datasources/
-│       │   │   └── local/
-│       │   │       └── notes_local_datasource.dart
-│       │   ├── mappers/
-│       │   │   └── note_mapper.dart
-│       │   ├── models/
-│       │   │   └── note_model.dart
-│       │   └── repositories/
-│       │       └── note_repository_impl.dart
-│       │
-│       ├── domain/
-│       │   ├── entities/
-│       │   │   └── note_entity.dart
-│       │   ├── repositories/
-│       │   │   └── note_repository.dart
-│       │   └── usecases/
-│       │       ├── create_note.dart
-│       │       ├── delete_note.dart
-│       │       ├── get_all_notes.dart
-│       │       ├── get_note_by_id.dart
-│       │       ├── search_notes.dart
-│       │       ├── toggle_pin_note.dart
-│       │       ├── update_note.dart
-│       │       ├── update_note_color.dart
-│       │       └── usecase.dart
-│       │
-│       └── presentation/
-│           ├── cubit/
-│           │   ├── note_editor_cubit.dart
-│           │   ├── note_editor_state.dart
-│           │   ├── note_editor_state.freezed.dart
-│           │   ├── notes_cubit.dart
-│           │   ├── notes_state.dart
-│           │   └── notes_state.freezed.dart
-│           ├── pages/
-│           │   ├── note_editor_page.dart
-│           │   └── notes_list_page.dart
-│           └── widgets/
-│               ├── color_picker_widget.dart
-│               ├── empty_state_widget.dart
-│               ├── note_actions_sheet.dart
-│               ├── note_card.dart
-│               └── search_bar_widget.dart
+│   ├── notes/
+│   │   ├── data/
+│   │   │   ├── datasources/local/
+│   │   │   ├── mappers/
+│   │   │   ├── models/
+│   │   │   └── repositories/
+│   │   ├── domain/
+│   │   │   ├── entities/
+│   │   │   ├── repositories/
+│   │   │   └── usecases/
+│   │   └── presentation/
+│   │       ├── cubit/
+│   │       ├── pages/
+│   │       └── widgets/
+│   │
+│   ├── tasks/
+│   │   └── presentation/pages/
+│   │
+│   ├── notifications/
+│   │   └── presentation/pages/
+│   │
+│   └── settings/
+│       └── presentation/pages/
 │
 └── main.dart
 ```
@@ -222,3 +218,5 @@ flutter build apk --release
 - Auto-save debounces with 1.5 second delay
 - Pinned notes always appear at the top
 - Supports both light and dark themes
+- Bottom navigation with 4 tabs (Home, Tasks, Notifications, Settings)
+- Minimal, professional UI inspired by reference design

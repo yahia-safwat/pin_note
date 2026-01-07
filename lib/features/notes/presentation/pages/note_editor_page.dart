@@ -1,8 +1,3 @@
-/// Note editor page for creating and editing notes.
-///
-/// Provides a full-screen editor with auto-save functionality.
-library;
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -40,7 +35,7 @@ class _NoteEditorView extends StatefulWidget {
 class _NoteEditorViewState extends State<_NoteEditorView> {
   late TextEditingController _titleController;
   late TextEditingController _contentController;
-  bool _showColorPicker = false;
+  bool _isInitialized = false;
 
   @override
   void initState() {
@@ -57,16 +52,17 @@ class _NoteEditorViewState extends State<_NoteEditorView> {
   }
 
   void _syncControllersWithState(NoteEditorState state) {
+    if (_isInitialized) return;
+
     state.maybeWhen(
       editing: (note, isNewNote, hasUnsavedChanges) {
-        // Only sync if controllers are empty (first load)
-        // or if note was just loaded
-        if (_titleController.text.isEmpty && note.title.isNotEmpty) {
+        if (note.title.isNotEmpty) {
           _titleController.text = note.title;
         }
-        if (_contentController.text.isEmpty && note.content.isNotEmpty) {
+        if (note.content.isNotEmpty) {
           _contentController.text = note.content;
         }
+        _isInitialized = true;
       },
       orElse: () {},
     );
@@ -82,6 +78,7 @@ class _NoteEditorViewState extends State<_NoteEditorView> {
               const SnackBar(
                 content: Text('Note saved'),
                 duration: Duration(seconds: 1),
+                behavior: SnackBarBehavior.floating,
               ),
             );
           },
@@ -93,36 +90,52 @@ class _NoteEditorViewState extends State<_NoteEditorView> {
               SnackBar(
                 content: Text(message),
                 backgroundColor: Theme.of(context).colorScheme.error,
+                behavior: SnackBarBehavior.floating,
               ),
             );
           },
           orElse: () {},
         );
 
-        // Sync controllers on first load
         _syncControllersWithState(state);
       },
       builder: (context, state) {
         return state.when(
-          initial: () => _buildLoading(),
-          loading: () => _buildLoading(),
+          initial: () => _buildLoading(context),
+          loading: () => _buildLoading(context),
           editing: (note, isNewNote, hasChanges) {
-            return _buildEditor(context, note.color, note.isPinned);
+            return _buildEditor(
+              context,
+              noteColor: note.color,
+              isPinned: note.isPinned,
+              isNewNote: isNewNote,
+            );
           },
-          saving: () => _buildEditor(context, null, false, isSaving: true),
-          saved: () => _buildEditor(context, null, false),
-          deleted: () => _buildLoading(),
+          saving: () => _buildEditor(context, isSaving: true),
+          saved: () => _buildEditor(context),
+          deleted: () => _buildLoading(context),
           error: (message) => _buildError(context, message),
         );
       },
     );
   }
 
-  Widget _buildLoading() {
-    return const Scaffold(body: Center(child: CircularProgressIndicator()));
+  Widget _buildLoading(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => context.go('/'),
+        ),
+      ),
+      body: const Center(child: CircularProgressIndicator()),
+    );
   }
 
   Widget _buildError(BuildContext context, String message) {
+    final theme = Theme.of(context);
+
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -131,65 +144,163 @@ class _NoteEditorViewState extends State<_NoteEditorView> {
         ),
       ),
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error_outline, size: 48, color: Colors.red),
-            const SizedBox(height: 16),
-            Text(message),
-            const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: () => context.go('/'),
-              child: const Text('Go Back'),
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.error_outline,
+                size: 64,
+                color: theme.colorScheme.error,
+              ),
+              const SizedBox(height: 16),
+              Text('Error', style: theme.textTheme.titleLarge),
+              const SizedBox(height: 8),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.bodyMedium,
+              ),
+              const SizedBox(height: 24),
+              FilledButton(
+                onPressed: () => context.go('/'),
+                child: const Text('Go Back'),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildEditor(
-    BuildContext context,
+    BuildContext context, {
     int? noteColor,
-    bool isPinned, {
+    bool isPinned = false,
+    bool isNewNote = true,
     bool isSaving = false,
   }) {
     final cubit = context.read<NoteEditorCubit>();
     final theme = Theme.of(context);
     final color = noteColor ?? cubit.currentColor;
     final backgroundColor = NoteColors.fromInt(color);
-    final isDarkBackground = backgroundColor.computeLuminance() < 0.5;
-    final contentColor = isDarkBackground ? Colors.white : Colors.black87;
-    final hintColor = isDarkBackground ? Colors.white60 : Colors.black45;
+
+    // Determine text colors based on background
+    final isDark = backgroundColor.computeLuminance() < 0.5;
+    final textColor = isDark ? Colors.white : Colors.black87;
+    final hintColor = isDark ? Colors.white54 : Colors.black38;
+    final iconColor = isDark ? Colors.white70 : Colors.black54;
 
     return Scaffold(
       backgroundColor: backgroundColor,
+      appBar: AppBar(
+        backgroundColor: backgroundColor,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: iconColor),
+          onPressed: () => context.go('/'),
+        ),
+        actions: [
+          // Saving indicator
+          if (isSaving)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: Center(
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: iconColor,
+                  ),
+                ),
+              ),
+            ),
+
+          // Pin button
+          IconButton(
+            icon: Icon(
+              isPinned ? Icons.push_pin : Icons.push_pin_outlined,
+              color: isPinned ? AppColors.pinned : iconColor,
+            ),
+            onPressed: cubit.togglePin,
+            tooltip: isPinned ? AppStrings.unpin : AppStrings.pin,
+          ),
+
+          // Color picker
+          IconButton(
+            icon: Icon(Icons.palette_outlined, color: iconColor),
+            onPressed: () => _showColorPicker(context, cubit, color),
+            tooltip: AppStrings.changeColor,
+          ),
+
+          // More options
+          PopupMenuButton<String>(
+            icon: Icon(Icons.more_vert, color: iconColor),
+            onSelected: (value) {
+              if (value == 'delete') {
+                _confirmDelete(context, cubit);
+              }
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'delete',
+                child: ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.delete_outline, color: Colors.red),
+                  title: Text(
+                    AppStrings.delete,
+                    style: TextStyle(color: theme.colorScheme.error),
+                  ),
+                  dense: true,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
       body: SafeArea(
         child: Column(
           children: [
-            // App bar
-            _buildAppBar(context, cubit, isPinned, contentColor, isSaving),
-
-            // Divider
-            Divider(color: contentColor.withValues(alpha: 0.1), height: 1),
-
-            // Editor content
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 16,
+                ),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Last edited timestamp
+                    Row(
+                      children: [
+                        Icon(Icons.access_time, size: 14, color: hintColor),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Last edited: ${AppStrings.formatDate(DateTime.now())}', // Simplified for now
+                          style: TextStyle(fontSize: 12, color: hintColor),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
                     // Title field
                     TextField(
                       controller: _titleController,
                       style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w600,
-                        color: contentColor,
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: textColor,
+                        height: 1.2,
+                        letterSpacing: -0.5,
                       ),
                       decoration: InputDecoration(
                         hintText: AppStrings.titleHint,
-                        hintStyle: TextStyle(color: hintColor),
+                        hintStyle: TextStyle(
+                          color: hintColor,
+                          fontWeight: FontWeight.bold,
+                        ),
                         border: InputBorder.none,
                         enabledBorder: InputBorder.none,
                         focusedBorder: InputBorder.none,
@@ -200,14 +311,14 @@ class _NoteEditorViewState extends State<_NoteEditorView> {
                       textCapitalization: TextCapitalization.sentences,
                     ),
 
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 24),
 
                     // Content field
                     TextField(
                       controller: _contentController,
                       style: TextStyle(
-                        fontSize: 16,
-                        color: contentColor,
+                        fontSize: 18,
+                        color: textColor.withValues(alpha: 0.85),
                         height: 1.6,
                       ),
                       decoration: InputDecoration(
@@ -220,162 +331,66 @@ class _NoteEditorViewState extends State<_NoteEditorView> {
                       ),
                       onChanged: cubit.updateContent,
                       maxLines: null,
-                      minLines: 10,
+                      minLines: 20,
                       textCapitalization: TextCapitalization.sentences,
                     ),
                   ],
                 ),
               ),
             ),
-
-            // Color picker (shown when expanded)
-            if (_showColorPicker)
-              Container(
-                color: theme.colorScheme.surface,
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                child: ColorPickerWidget(
-                  selectedColor: color,
-                  onColorSelected: (newColor) {
-                    cubit.updateColor(newColor);
-                    setState(() => _showColorPicker = false);
-                  },
-                ),
-              ),
-
-            // Bottom toolbar
-            _buildBottomToolbar(context, cubit, color, isPinned),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildAppBar(
+  void _showColorPicker(
     BuildContext context,
     NoteEditorCubit cubit,
-    bool isPinned,
-    Color contentColor,
-    bool isSaving,
+    int currentColor,
   ) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-      child: Row(
-        children: [
-          // Back button
-          IconButton(
-            icon: Icon(Icons.arrow_back, color: contentColor),
-            onPressed: () => context.go('/'),
-          ),
-
-          const Spacer(),
-
-          // Saving indicator
-          if (isSaving)
-            Padding(
-              padding: const EdgeInsets.only(right: 16),
-              child: SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  color: contentColor,
-                ),
-              ),
-            ),
-
-          // Pin button
-          IconButton(
-            icon: Icon(
-              isPinned ? Icons.push_pin : Icons.push_pin_outlined,
-              color: isPinned ? AppColors.pinned : contentColor,
-            ),
-            onPressed: cubit.togglePin,
-            tooltip: isPinned ? AppStrings.unpin : AppStrings.pin,
-          ),
-
-          // More options
-          PopupMenuButton<String>(
-            icon: Icon(Icons.more_vert, color: contentColor),
-            onSelected: (value) {
-              switch (value) {
-                case 'delete':
-                  _confirmDelete(context, cubit);
-                  break;
-              }
-            },
-            itemBuilder: (context) => [
-              const PopupMenuItem(
-                value: 'delete',
-                child: ListTile(
-                  leading: Icon(Icons.delete_outline, color: Colors.red),
-                  title: Text(
-                    AppStrings.delete,
-                    style: TextStyle(color: Colors.red),
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Theme.of(
+                      context,
+                    ).colorScheme.onSurface.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(2),
                   ),
-                  contentPadding: EdgeInsets.zero,
-                  dense: true,
                 ),
               ),
+              const SizedBox(height: 24),
+              Text(
+                AppStrings.changeColor,
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 16),
+              ColorPickerGrid(
+                selectedColor: currentColor,
+                onColorSelected: (color) {
+                  cubit.updateColor(color);
+                  Navigator.pop(context);
+                },
+              ),
+              const SizedBox(height: 16),
             ],
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildBottomToolbar(
-    BuildContext context,
-    NoteEditorCubit cubit,
-    int color,
-    bool isPinned,
-  ) {
-    final theme = Theme.of(context);
-
-    return Container(
-      color: theme.colorScheme.surface,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: SafeArea(
-        top: false,
-        child: Row(
-          children: [
-            // Color button
-            IconButton(
-              icon: Stack(
-                alignment: Alignment.center,
-                children: [
-                  const Icon(Icons.color_lens_outlined),
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: Container(
-                      width: 12,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        color: NoteColors.fromInt(color),
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: theme.colorScheme.outline,
-                          width: 1,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              onPressed: () {
-                setState(() => _showColorPicker = !_showColorPicker);
-              },
-              tooltip: AppStrings.changeColor,
-            ),
-
-            const Spacer(),
-
-            // Character count (optional enhancement)
-            Text(
-              '${_contentController.text.length} characters',
-              style: theme.textTheme.bodySmall,
-            ),
-          ],
         ),
       ),
     );

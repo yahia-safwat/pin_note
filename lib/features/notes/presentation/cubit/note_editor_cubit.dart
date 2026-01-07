@@ -14,6 +14,7 @@ import '../../domain/usecases/create_note.dart';
 import '../../domain/usecases/delete_note.dart';
 import '../../domain/usecases/get_note_by_id.dart';
 import '../../domain/usecases/update_note.dart';
+import 'notes_cubit.dart';
 import 'note_editor_state.dart';
 
 /// Cubit for managing note editing state and operations.
@@ -22,6 +23,7 @@ class NoteEditorCubit extends Cubit<NoteEditorState> {
   final CreateNote createNote;
   final UpdateNote updateNote;
   final DeleteNote deleteNote;
+  final NotesCubit notesCubit;
 
   /// Timer for auto-save debouncing
   Timer? _autoSaveTimer;
@@ -43,6 +45,7 @@ class NoteEditorCubit extends Cubit<NoteEditorState> {
     required this.createNote,
     required this.updateNote,
     required this.deleteNote,
+    required this.notesCubit,
   }) : super(const NoteEditorState.initial());
 
   /// Initialize the editor with an existing note or a new note.
@@ -165,6 +168,8 @@ class NoteEditorCubit extends Cubit<NoteEditorState> {
 
         if (showSavingState) {
           emit(const NoteEditorState.saved());
+          // Refresh notes list
+          notesCubit.loadNotes();
           // Return to editing state after brief delay
           Future.delayed(const Duration(milliseconds: 500), () {
             if (!isClosed) {
@@ -172,6 +177,8 @@ class NoteEditorCubit extends Cubit<NoteEditorState> {
             }
           });
         } else {
+          // Silent refresh for auto-save
+          notesCubit.loadNotes();
           _emitEditingState(hasChanges: false);
         }
       });
@@ -186,6 +193,8 @@ class NoteEditorCubit extends Cubit<NoteEditorState> {
 
         if (showSavingState) {
           emit(const NoteEditorState.saved());
+          // Refresh notes list
+          notesCubit.loadNotes();
           // Return to editing state after brief delay
           Future.delayed(const Duration(milliseconds: 500), () {
             if (!isClosed) {
@@ -193,6 +202,8 @@ class NoteEditorCubit extends Cubit<NoteEditorState> {
             }
           });
         } else {
+          // Silent refresh for auto-save
+          notesCubit.loadNotes();
           _emitEditingState(hasChanges: false);
         }
       });
@@ -211,10 +222,10 @@ class NoteEditorCubit extends Cubit<NoteEditorState> {
 
     final result = await deleteNote(_currentNote!.id);
 
-    result.fold(
-      (failure) => emit(NoteEditorState.error(failure.message)),
-      (_) => emit(const NoteEditorState.deleted()),
-    );
+    result.fold((failure) => emit(NoteEditorState.error(failure.message)), (_) {
+      notesCubit.loadNotes();
+      emit(const NoteEditorState.deleted());
+    });
   }
 
   /// Emit the editing state with current note.

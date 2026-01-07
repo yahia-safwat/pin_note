@@ -60,8 +60,8 @@ Future<void> initializeDependencies() async {
   sl.registerLazySingleton(() => UpdateNoteColor(sl()));
 
   // --- Cubits ---
-  // NotesCubit is a factory because multiple instances may be needed
-  sl.registerFactory(
+  // NotesCubit is a singleton to ensure state synchronization across the app
+  sl.registerLazySingleton(
     () => NotesCubit(
       getAllNotes: sl(),
       searchNotes: sl(),
@@ -78,6 +78,7 @@ Future<void> initializeDependencies() async {
       createNote: sl(),
       updateNote: sl(),
       deleteNote: sl(),
+      notesCubit: sl(),
     ),
   );
 }

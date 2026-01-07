@@ -12,10 +12,12 @@ library;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 import 'core/di/injection_container.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'features/notes/presentation/cubit/notes_cubit.dart';
 
 void main() async {
   // Ensure Flutter bindings are initialized
@@ -40,18 +42,25 @@ class PinNoteApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp.router(
-      // App info
-      title: 'PinNote',
-      debugShowCheckedModeBanner: false,
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider<NotesCubit>(
+          create: (context) => sl<NotesCubit>()..loadNotes(),
+        ),
+      ],
+      child: MaterialApp.router(
+        // App info
+        title: 'PinNote',
+        debugShowCheckedModeBanner: false,
 
-      // Theming
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.system,
+        // Theming
+        theme: AppTheme.lightTheme,
+        darkTheme: AppTheme.darkTheme,
+        themeMode: ThemeMode.system,
 
-      // Routing
-      routerConfig: AppRouter.router,
+        // Routing
+        routerConfig: AppRouter.router,
+      ),
     );
   }
 }
